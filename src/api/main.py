@@ -8,8 +8,9 @@ import pandas as pd
 
 # ── 1. Load model from MLflow Model Registry ────────────────────────────────
 def load_model():
-    mlflow.set_tracking_uri("sqlite:///mlflow.db")
-    model = mlflow.sklearn.load_model("models:/WineQualityModel/1")
+    import pickle
+    with open("models/model.pkl", "rb") as f:
+        model = pickle.load(f)
     return model
 
 model = load_model()
