@@ -4,8 +4,9 @@
 import pandas as pd
 import mlflow
 import mlflow.sklearn
+from mlflow import MlflowClient
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
+from sklearn.metrics import accuracy_score, f1_score
 import pickle
 import os
 
@@ -23,9 +24,10 @@ params = {
 }
 
 # ── 3. Start MLflow run and log everything ───────────────────────────────────
-mlflow.set_experiment("wine-quality")   # experiment name shown in UI
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_experiment("wine-quality")
 
-with mlflow.start_run():
+with mlflow.start_run() as run:
 
     # Train model
     model = RandomForestClassifier(**params)
@@ -43,7 +45,11 @@ with mlflow.start_run():
     mlflow.log_metrics(metrics)
 
     # Log the trained model as an artifact
-    mlflow.sklearn.log_model(model, "random_forest_model")
+    model_info = mlflow.sklearn.log_model(
+        model,
+        name="random_forest_model",
+        registered_model_name="WineQualityModel"  # ← Model Registryに登録
+    )
 
     # Save model locally as well
     os.makedirs("models", exist_ok=True)
@@ -53,3 +59,5 @@ with mlflow.start_run():
     print("Parameters:", params)
     print("Metrics:", metrics)
     print("MLflow run complete. Model saved to models/model.pkl")
+    print(f"Model registered as 'WineQualityModel' in MLflow Model Registry")
+    
