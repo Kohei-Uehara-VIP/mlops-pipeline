@@ -21,14 +21,17 @@ structlog.configure(
 )
 logger = structlog.get_logger()
 
+
 # ── 2. Load model ────────────────────────────────────────────────────────────
 def load_model():
     with open("models/model.pkl", "rb") as f:
         model = pickle.load(f)
     return model
 
+
 model = load_model()
 logger.info("model_loaded", status="success")
+
 
 # ── 3. Define input schema with Pydantic ────────────────────────────────────
 class WineFeatures(BaseModel):
@@ -44,13 +47,16 @@ class WineFeatures(BaseModel):
     sulphates: float
     alcohol: float
 
+
 # ── 4. Create FastAPI app ────────────────────────────────────────────────────
 app = FastAPI(title="Wine Quality Prediction API")
+
 
 @app.get("/health")
 def health():
     logger.info("health_check", status="ok")
     return {"status": "ok"}
+
 
 @app.post("/predict")
 def predict(features: WineFeatures):

@@ -2,7 +2,6 @@
 # Build a reproducible preprocessing pipeline using scikit-learn
 
 import pandas as pd  # Data manipulation
-import numpy as np  # Numerical operations
 from sklearn.pipeline import Pipeline  # Chain multiple steps
 from sklearn.preprocessing import StandardScaler  # Feature scaling
 from sklearn.model_selection import train_test_split  # Split data

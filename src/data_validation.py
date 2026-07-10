@@ -2,14 +2,13 @@
 # Validate the raw Wine Quality dataset using Pandera
 
 import pandas as pd  # Data manipulation library
-import pandera.pandas as pa  # Data validation library
-from pandera.pandas import Column, DataFrameSchema, Check # Validation components
+from pandera.pandas import Column, DataFrameSchema, Check  # Validation components
 
 
 def get_schema() -> DataFrameSchema:
     """
     Define the expected schema for Wine Quality dataset.
-    
+
     Returns:
         DataFrameSchema object with validation rules
     """
