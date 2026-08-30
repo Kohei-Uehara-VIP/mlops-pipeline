@@ -17,6 +17,7 @@ FastAPI / Docker / Google Cloud Run. Conda env: `mlops-pipeline`.
 - Never claim results that do not come from an actual run. The model in this
   repo is a Random Forest — reported algorithms and metrics must match the
   trained artifact exactly.
+- Never add a "Co-Authored-By: Claude" (or any AI-attribution) trailer to commit messages.
 
 ## DONE
 - Every task states a machine-checkable done condition before work starts.
