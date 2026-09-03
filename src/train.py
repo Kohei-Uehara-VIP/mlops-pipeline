@@ -5,9 +5,17 @@ import pandas as pd
 import mlflow
 import mlflow.sklearn
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
 import pickle
 import os
+import argparse
+
+# ── 0. Parse command-line arguments ─────────────────────────────────────────
+parser = argparse.ArgumentParser()
+parser.add_argument("--n_estimators", type=int, default=100)
+parser.add_argument("--max_depth", type=int, default=5)
+args = parser.parse_args()
 
 # ── 1. Load processed data ──────────────────────────────────────────────────
 X_train = pd.read_csv("data/processed/X_train.csv")
@@ -17,8 +25,8 @@ y_test = pd.read_csv("data/processed/y_test.csv").squeeze()
 
 # ── 2. Define hyperparameters ────────────────────────────────────────────────
 params = {
-    "n_estimators": 100,   # number of trees in the forest
-    "max_depth": 5,        # maximum depth of each tree
+    "n_estimators": args.n_estimators,   # number of trees in the forest
+    "max_depth": args.max_depth,        # maximum depth of each tree
     "random_state": 42     # fix randomness for reproducibility
 }
 
@@ -38,6 +46,11 @@ with mlflow.start_run() as run:
         "accuracy": accuracy_score(y_test, y_pred),
         "f1_score": f1_score(y_test, y_pred, average="weighted"),
     }
+
+    # Create and log confusion matrix
+    ConfusionMatrixDisplay.from_predictions(y_test, y_pred)
+    plt.savefig("confusion_matrix.png")
+    mlflow.log_artifact("confusion_matrix.png")
 
     # Log parameters and metrics to MLflow
     mlflow.log_params(params)
