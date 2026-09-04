@@ -13,8 +13,8 @@ import argparse
 
 # ── 0. Parse command-line arguments ─────────────────────────────────────────
 parser = argparse.ArgumentParser()
-parser.add_argument("--n_estimators", type=int, default=100)
-parser.add_argument("--max_depth", type=int, default=5)
+parser.add_argument("--n_estimators", type=int, default=200)
+parser.add_argument("--max_depth", type=int, default=10)
 args = parser.parse_args()
 
 # ── 1. Load processed data ──────────────────────────────────────────────────
