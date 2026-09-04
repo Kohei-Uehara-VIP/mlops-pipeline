@@ -62,6 +62,7 @@ jobs:
         run: |
           mkdir -p data/raw
           curl -o data/raw/winequality-red.csv https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv
+          sed -i 's/;/,/g' data/raw/winequality-red.csv
           python src/preprocessing.py
 
       - name: Train model and capture output
