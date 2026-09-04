@@ -42,3 +42,43 @@ jobs:
 
       - name: Run tests
         run: pytest tests/
+
+  cml_report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Download and preprocess data
+        run: |
+          mkdir -p data/raw
+          curl -o data/raw/winequality-red.csv https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv
+          sed -i 's/;/,/g' data/raw/winequality-red.csv
+          python src/preprocessing.py
+
+      - name: Train model and capture output
+        run: python src/train.py > train_output.txt
+
+      - name: Setup CML
+        uses: iterative/setup-cml@v2
+
+      - name: Create CML report
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "## Model Evaluation Report" > report.md
+          cat train_output.txt >> report.md
+          echo '![Confusion Matrix](./confusion_matrix.png)' >> report.md
+          cml comment create report.md
