@@ -139,6 +139,16 @@ Open [http://127.0.0.1:5000](http://127.0.0.1:5000), then go to
 **Model training → Training runs** to compare runs, or
 **Model registry → WineQualityModel** to see registered versions.
 
+Example: 7 runs with different `n_estimators` / `max_depth` combinations,
+compared side by side in the Training runs table:
+
+![MLflow training runs](docs/screenshots/mlflow-training-runs.png)
+
+The best-performing version is tagged with the `staging` alias in the
+Model Registry:
+
+![MLflow model registry](docs/screenshots/mlflow-model-registry.png)
+
 ---
 
 ## Serving a Model Directly from the Registry
