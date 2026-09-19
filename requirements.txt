@@ -89,7 +89,7 @@ mlflow-tracing==3.11.1
 multidict==6.7.1
 mypy_extensions==1.1.0
 networkx==3.4.2
-numpy==2.2.6
+numpy==2.0.2
 omegaconf==2.3.0
 opentelemetry-api==1.40.0
 opentelemetry-proto==1.40.0
@@ -165,3 +165,4 @@ zc.lockfile==4.0
 zipp==3.23.0
 structlog
 pytest==9.1.1
+evidently==0.6.7
