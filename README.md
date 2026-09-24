@@ -20,6 +20,9 @@ graph LR
     H --> I[Google Cloud Run\nProduction API]
     C --> |DVC| J[Data Versioning]
     D --> |GitHub Actions| K[CI/CD Pipeline]
+    G --> |Evidently| L[Drift Monitoring]
+    L --> |Prefect| M[Automated Retraining]
+    M --> D
 ```
 
 ## Project Structure
@@ -31,13 +34,19 @@ mlops-pipeline/
 ├── docs/                # Documentation and plans
 ├── models/              # Saved model artifacts
 ├── notebooks/           # EDA notebooks
+├── reports/             # Generated drift reports (git-ignored)
 ├── src/
 │   ├── api/             # FastAPI application
 │   │   └── main.py
 │   ├── data_ingestion.py
 │   ├── data_validation.py
 │   ├── preprocessing.py
-│   └── train.py
+│   ├── train.py
+│   ├── drift_report.py      # Evidently HTML drift report
+│   ├── drift_check.py       # Evidently Test Suite (JSON pass/fail)
+│   ├── training_flow.py     # Prefect flow: preprocess + train
+│   ├── retraining_flow.py   # Prefect flow: drift-triggered retraining
+│   └── serve_flow.py        # Prefect deployment on a schedule
 ├── dvc.yaml             # DVC pipeline definition
 ├── Dockerfile           # Container definition
 └── requirements.txt
@@ -216,6 +225,119 @@ git push vip my-experiment
 ```
 ---
 
+## Monitoring and Automated Retraining
+
+Model quality degrades in production when incoming data stops resembling
+the training data. This part of the pipeline detects that shift and
+retrains the model automatically.
+
+### Why monitor data drift, and how Evidently AI does it
+
+Evidently compares two datasets column by column with statistical tests:
+
+- **reference** — the training data (`data/processed/X_train.csv`)
+- **current** — simulated production data (`data/processed/X_test.csv`)
+
+`src/drift_report.py` produces an interactive HTML report
+(`reports/drift_report.html`) for humans to read. `src/drift_check.py`
+turns the same comparison into a machine-readable pass/fail result
+(`reports/drift_check.json`) that a pipeline can act on without a human
+looking at a dashboard.
+
+Drift is simulated by shifting the `alcohol` and `sulphates` columns by
++1.0. The processed data is standardized, so +1.0 means one standard
+deviation. Because the data is standardized, the report's axes show
+standardized values rather than real units such as alcohol percentage.
+
+**Threshold.** The check fails when the share of drifted columns reaches
+0.3. With 11 columns, up to 3 drifted columns pass and 4 or more fail.
+Two columns drift by chance alone (0.18), so 0.3 separates random
+variation from the injected drift.
+
+The test suite also runs `DataStabilityTestPreset` and
+`DataQualityTestPreset`. Their results are logged for information, but
+only the drift test decides whether the pipeline retrains. For example,
+the row-count test always fails because the test split is smaller than
+the training split, which is expected rather than a data problem.
+
+**Version note.** Evidently is pinned to `0.6.7` because the `TestSuite`
+API used here was removed in later versions.
+`TestShareOfDriftedColumns` was added on top of the two presets because
+neither preset measures data drift.
+
+### How Prefect orchestration dictates the pipeline logic
+
+`src/retraining_flow.py` is a conditional flow:
+
+| Task | Action |
+|------|--------|
+| Ingest production data | Load reference data and simulated production data |
+| Check data drift | Run the Evidently Test Suite and return `True` / `False` |
+| Retrain model | Runs only when drift was detected |
+
+The flow branches on the boolean returned by `is_drift_detected()`.
+A clean run records two task runs and skips retraining; a drifted run
+records three task runs and registers a new model version in MLflow.
+The Prefect dashboard shows this difference as a dynamic execution path:
+
+![Prefect dynamic execution path](docs/screenshots/prefect-dynamic-path.png)
+
+`src/training_flow.py` is the simpler flow from the same week:
+preprocessing followed by training, with no branching.
+
+### Running the monitoring pipeline locally
+
+Three terminals are used, each with the `mlops-pipeline` conda
+environment activated.
+
+**1. Start the Prefect server** (terminal 1):
+
+```bash
+prefect server start
+```
+
+The dashboard is served at http://127.0.0.1:4200. Point the client at
+the server once, on any terminal:
+
+```bash
+prefect config set PREFECT_API_URL=http://127.0.0.1:4200/api
+```
+
+**2. Run a flow manually** (terminal 2):
+
+```bash
+python -m src.drift_report                 # HTML drift report
+python -m src.drift_check                  # JSON pass/fail, exits 1 on drift
+python -m src.retraining_flow              # drifted data, retrains
+python -m src.retraining_flow --no-drift   # clean data, skips retraining
+```
+
+**3. Run on a schedule** (terminal 3):
+
+```bash
+python -m src.serve_flow
+```
+
+This creates the deployment `drift-retraining-every-10-min` and keeps
+polling for scheduled runs every 10 minutes. Keep the process running.
+To trigger a run immediately without waiting for the schedule:
+
+```bash
+prefect deployment run 'Drift-triggered retraining/drift-retraining-every-10-min'
+```
+
+### Known limitations
+
+- Retraining reruns the existing training data; newly ingested production
+  data is not yet added to the training set.
+- Production data is simulated from the test split, not collected from a
+  live service.
+- Installing these tools changed two pinned versions: `numpy` was
+  downgraded to `2.0.2` for Evidently, and `fastapi` was upgraded to
+  `0.141.1` for Prefect. Both are reflected in `requirements.txt`.
+
+---
+
 ## Tech Stack
 
 | Layer | Tool |
@@ -228,6 +350,8 @@ git push vip my-experiment
 | Containerization | Docker |
 | Cloud Deployment | Google Cloud Run |
 | CI/CD | GitHub Actions |
+| Drift Monitoring | Evidently AI |
+| Workflow Orchestration | Prefect |
 | Logging | structlog |
 
 ---
@@ -239,7 +363,3 @@ from UCI Machine Learning Repository.
 - 1,599 red wine samples
 - 11 physicochemical features
 - Quality score: 3–9
-
-
-
-
