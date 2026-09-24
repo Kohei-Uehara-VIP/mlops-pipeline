@@ -20,9 +20,18 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Pull latest data with DVC
-        run: dvc pull
+      # The dataset is tracked by DVC but no DVC remote is configured,
+      # so `dvc pull` cannot restore it here. Download the public source
+      # instead, the same way the cml_report job in ci.yml does.
+      - name: Download raw data
+        run: |
+          mkdir -p data/raw
+          curl -o data/raw/winequality-red.csv https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv
+          sed -i 's/;/,/g' data/raw/winequality-red.csv
 
+      # Runs the same steps as dvc.yaml, without DVC: this environment is
+      # disposable, so there is nowhere to store the DVC outputs.
       - name: Run training pipeline
-        run: dvc repro
-        
+        run: |
+          python src/preprocessing.py
+          python src/train.py
