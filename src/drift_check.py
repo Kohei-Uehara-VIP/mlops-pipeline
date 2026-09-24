@@ -5,6 +5,9 @@ training data (reference), saves the results as JSON, and raises an
 error when the share of drifted columns reaches the threshold. This
 mimics how an automated pipeline would stop on drifted data.
 
+Week 9, Day 4 adds is_drift_detected(), which returns True or False
+instead of raising, so that a Prefect flow can branch on the result.
+
 Usage (from the repository root):
     python -m src.drift_check              # with simulated drift -> fails
     python -m src.drift_check --no-drift   # without drift -> passes
@@ -57,8 +60,8 @@ def save_results(results_json):
     print(f"Test results saved to {RESULTS_PATH}")
 
 
-def check_drift(results_json):
-    """Parse the JSON results and raise an error if drift is too high."""
+def get_drift_score(results_json):
+    """Parse the JSON results and return the share of drifted columns."""
     results = json.loads(results_json)
 
     # Overall summary of all tests (for information only)
@@ -88,6 +91,20 @@ def check_drift(results_json):
         f"Drift score: {drift_score:.3f} "
         f"(threshold: {DRIFT_SHARE_THRESHOLD})"
     )
+    return drift_score
+
+
+def is_drift_detected(results_json):
+    """Return True when the drift score reaches the threshold.
+
+    Used by the Prefect flow to decide whether to retrain.
+    """
+    return get_drift_score(results_json) >= DRIFT_SHARE_THRESHOLD
+
+
+def check_drift(results_json):
+    """Raise DataDriftError if the drift score is too high."""
+    drift_score = get_drift_score(results_json)
 
     if drift_score >= DRIFT_SHARE_THRESHOLD:
         raise DataDriftError(
